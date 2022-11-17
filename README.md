@@ -8,6 +8,7 @@ To run it first make sure that all dependencies are install:
 npm i
 ```
 
+Copy FLA to folder
 Then open up FLA in Animate
 add gamecap.js to Include Scripts
 add the following to first frame script:
