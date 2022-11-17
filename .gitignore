@@ -1,0 +1,8 @@
+node_modules
+/images
+/components
+/assets
+/sounds
+/libs
+/videos
+/index*.html
