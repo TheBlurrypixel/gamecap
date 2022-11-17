@@ -1,8 +1,12 @@
+# gamecap.js
+Michael Gochoco © 2020
 This will create a fullboard which will output an image sequence a position.json file with mouse position data
 
 To run it first make sure that all dependencies are install:
 
+```
 npm i
+```
 
 Then open up FLA in Animate
 add gamecap.js to Include Scripts
@@ -17,7 +21,9 @@ Make sure html output is index.html (change this in main.js)
 
 Then run the program:
 
+```
 npm start
+```
 
 Interact with the board!
 
