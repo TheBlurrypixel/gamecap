@@ -7,9 +7,13 @@ npm i
 Then open up FLA in Animate
 add gamecap.js to Include Scripts
 add the following to first frame script:
-```gamecap.startCapture(stage);```
+```
+gamecap.startCapture(stage);
+```
 
 File > Publish
+
+Make sure html output is index.html (change this in main.js)
 
 Then run the program:
 
