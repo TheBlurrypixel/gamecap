@@ -4,7 +4,10 @@ To run it first make sure that all dependencies are install:
 
 npm i
 
-Then open up FLA in Animate add gc.startCapture(stage) and publish it:
+Then open up FLA in Animate
+add gamecap.js to Include Scripts
+add the following to first frame script:
+```gamecap.startCapture(stage);```
 
 File > Publish
 
