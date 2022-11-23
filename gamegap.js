@@ -21,11 +21,6 @@ var main = remote.require("./main.js");
 const {dialog} = remote;
 const fs = remote.require('fs');
 
-// can call from the main process
-//main.saveFile();
-
-// or call from the renderer process using remote
-// saves the image
 var saveFile = function(filename, content, type, callback) {
 	try {
 		fs.writeFile(filename, content, type, callback);
@@ -33,13 +28,14 @@ var saveFile = function(filename, content, type, callback) {
 	catch(e) { alert('Failed to save the file !'); }
 }
 
-// sends positional data and saves as position.json on exit
 var sendData = function(data) {
 	ipcRenderer.send('async', data);
 }
 
 // screencapture code
-function startCapture(stage, maxFrames = 3600) {
+function startCapture(stage, width = 540, height = 960, maxFrames = 3600) {
+  sendData({width, height});
+
   var imageCounter = 0;
   var mouseClicking = false;
 
@@ -52,23 +48,9 @@ function startCapture(stage, maxFrames = 3600) {
   });
 
   var canvas = document.getElementById( 'canvas' );
-  var bitmap = new createjs.Bitmap( canvas );
-  bitmap.cache( 0, 0, canvas.width, canvas.height, 1 );
-
-  //this.cache(0,0,lib.properties.width,lib.properties.height);
   createjs.Ticker.addEventListener('tick', (evt) => {
-    bitmap.updateCache();
-    var quality = 0.7;
-    var url = bitmap.cacheCanvas.toDataURL('image/jpeg', quality);
-
-    const base64data = url.replace(/^data:image\/jpeg;base64,/, "");
-    saveFile("output\\image_"+(++imageCounter)+".jpg", base64data, 'base64', (err) => {
-      if(err)
-        console.log("Err: " + err);
-    });
-
-    // export mouseclick data
-    var data = {type: "tick", data: {frame: imageCounter, x: stage.mouseX, y: stage.mouseY, clicking: mouseClicking}};
+    var url = canvas.toDataURL();
+    var data = {frame: ++imageCounter, url: url, x: stage.mouseX, y: stage.mouseY, clicking: mouseClicking};
     sendData(data);
 
     if(imageCounter > maxFrames) evt.remove();

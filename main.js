@@ -1,7 +1,7 @@
 const {dialog, ipcMain} = require('electron');
 var fs = require('fs');
 
-﻿const electron = require('electron');
+const electron = require('electron');
 const app = electron.app;
 
 const path = require('path');
@@ -24,58 +24,54 @@ if (shouldQuit) {
   return;
 }
 
-var positionalArray = [];
 if(!fs.existsSync("output\\"))
 	fs.mkdirSync("output\\");
 
+var saveFile = function(filename, content, type, callback) {
+  try {
+    fs.writeFile(filename, content, type, callback);
+  }
+  catch(e) { alert('Failed to save the file !'); }
+}
+
+var frameData = [];
+
 ipcMain.on('async', (event, arg) => {
-    if(arg.type == "tick")
-      positionalArray.push({frame: arg.data.frame, x: arg.data.x, y: arg.data.y, clicking: arg.data.clicking});
-
-	// It is possile inside main process, to send message from renderer process to itself or another renderer process
-    // Reply on async message from renderer process
-//    event.sender.send('async-reply', 2);
+  if(!!arg.width) {
+    mainWindow.setSize(arg.width, arg.height);
+    mainWindow.show();
+  }
+  else
+    frameData.push(arg);
 });
-
-
-// Make method externaly visible
-// exports.saveFile = arg => {
-//   try {
-//     var options = {
-//       title: "Save file",
-//       defaultPath : "my_filename",
-//       buttonLabel : "Save",
-//
-//       filters :[
-//         {name: 'txt', extensions: ['txt',]},
-//         {name: 'All Files', extensions: ['*']}
-//        ]
-//     }
-//
-//     dialog.showSaveDialog( options, (filename) => {
-//       fs.writeFileSync(filename, "hello world", 'utf-8');
-//     })
-//   }
-//   catch(e) { alert('Failed to save the file !'); }
-// }
-
 
 
 app.on('window-all-closed', () => {
+  var positionalArray = [];
+  if(!!frameData) {
+    frameData.forEach(data => {
+      const {frame, url} = data;
+      var base64data = url.split(';base64,')[1];
+      saveFile("output\\image_"+frame+".png", base64data, 'base64', (err) => {
+        if(err) console.log("Err: " + err);
+      });
+      positionalArray.push({frame: data.frame, x: data.x, y: data.y, clicking: data.clicking});
+    });
+  }
   fs.writeFileSync("output\\positions.json", JSON.stringify(positionalArray), 'utf-8');
+
   app.quit()
 });
 
+const ASPECT = "landscape";
+
 app.on('ready', function() {
-		mainWindow = new BrowserWindow({width: 1080, height: 1080, backgroundColor:'#000000'});
-
-//		mainWindow.on( "close", () => {mainWindow = null} );
-		mainWindow.on('closed', () => app.quit());
-
-		mainWindow.loadURL(url.format({
-				pathname: path.join(__dirname, 'index.html'),
-				protocol: 'file',
-				slashes: true
-			}));
+  mainWindow = new BrowserWindow({show: false, backgroundColor:'#000000'});
+  mainWindow.on('closed', () => app.quit());
+  mainWindow.loadURL(url.format({
+      pathname: path.join(__dirname, 'index.html'),
+      protocol: 'file',
+      slashes: true
+    }));
 	}
 );
