@@ -36,15 +36,23 @@ var saveFile = function(filename, content, type, callback) {
 
 var frameData = [];
 
+var useJpeg = false;
+
 ipcMain.on('async', (event, arg) => {
   if(!!arg.width) {
     mainWindow.setSize(arg.width, arg.height);
+    mainWindow.webContents.setZoomFactor(arg.zoomFactor);
+  // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
+    mainWindow.setMenu(null);
+    mainWindow.center();
+
     mainWindow.show();
+
+    if(!!arg.useJpeg) useJpeg = true;
   }
   else
     frameData.push(arg);
 });
-
 
 app.on('window-all-closed', () => {
   var positionalArray = [];
@@ -52,7 +60,7 @@ app.on('window-all-closed', () => {
     frameData.forEach(data => {
       const {frame, url} = data;
       var base64data = url.split(';base64,')[1];
-      saveFile("output\\image_"+frame+".png", base64data, 'base64', (err) => {
+      saveFile("output\\image_"+frame+(useJpeg?".jpg":".png"), base64data, 'base64', (err) => {
         if(err) console.log("Err: " + err);
       });
       positionalArray.push({frame: data.frame, x: data.x, y: data.y, clicking: data.clicking});
@@ -66,7 +74,8 @@ app.on('window-all-closed', () => {
 const ASPECT = "landscape";
 
 app.on('ready', function() {
-  mainWindow = new BrowserWindow({show: false, backgroundColor:'#000000'});
+  // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
+  mainWindow = new BrowserWindow({show: false, frame: false, backgroundColor:'#000000'});
   mainWindow.on('closed', () => app.quit());
   mainWindow.loadURL(url.format({
       pathname: path.join(__dirname, 'index.html'),

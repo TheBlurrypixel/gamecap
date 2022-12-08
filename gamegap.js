@@ -33,8 +33,16 @@ var sendData = function(data) {
 }
 
 // screencapture code
-function startCapture(stage, width = 540, height = 960, maxFrames = 3600) {
-  sendData({width, height});
+function startCapture(stage, options) {
+  //  useJpeg = false, zoomFactor = 1, skipFrame = 0, width = 540, height = 960, maxFrames = 3600
+  var useJpeg = options && "useJpeg" in options ? options.useJpeg : false;
+  var zoomFactor = options && "zoomFactor" in options ? options.zoomFactor : 1;
+  var skipFrame = options && "skipFrame" in options ? options.skipFrame : 0;
+  var width = options && "width" in options ? options.width : 540;
+  var height = options && "height" in options ? options.height : 960;
+  var maxFrames = options && "maxFrames" in options ? options.maxFrames : 3600;
+
+  sendData({width, height, useJpeg, zoomFactor});
 
   var imageCounter = 0;
   var mouseClicking = false;
@@ -48,12 +56,20 @@ function startCapture(stage, width = 540, height = 960, maxFrames = 3600) {
   });
 
   var canvas = document.getElementById( 'canvas' );
+  var tickCounter = 0;
   createjs.Ticker.addEventListener('tick', (evt) => {
-    var url = canvas.toDataURL();
-    var data = {frame: ++imageCounter, url: url, x: stage.mouseX, y: stage.mouseY, clicking: mouseClicking};
-    sendData(data);
+    if(tickCounter > 0) { // skip first tick
+      if(skipFrame == 0 || tickCounter % skipFrame == 0) {
 
-    if(imageCounter > maxFrames) evt.remove();
+        // for transparency without params
+        // for jpeg set to canvas.toDataURL('image/jpeg', 1.0);
+        var url = useJpeg ? canvas.toDataURL('image/jpeg', 1.0) : canvas.toDataURL();
+        var data = {frame: ++imageCounter, url: url, x: stage.mouseX, y: stage.mouseY, clicking: mouseClicking};
+        sendData(data);  
+      }
+      if(imageCounter > maxFrames) evt.remove();  
+    }
+    ++tickCounter;
   });
 }
 
