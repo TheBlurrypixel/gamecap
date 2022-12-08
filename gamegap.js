@@ -16,6 +16,7 @@ if(!Array.prototype.flat) {
     });
 }
 
+if(typeof require === "undefined") return;
 var {ipcRenderer, remote} = require('electron');
 var main = remote.require("./main.js");
 const {dialog} = remote;
