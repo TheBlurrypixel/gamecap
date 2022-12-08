@@ -14,7 +14,8 @@ add gamecap.js to Include Scripts <br/>
 add the following to first frame script:
 
 ```
-gamecap.startCapture(stage);
+// startCapture(stage[, {useJpeg = false, zoomFactor = 1, skipFrame = 0, width = 540, height = 960, maxFrames = 3600}])
+if(!!gamecap) gamecap.startCapture(stage);
 ```
 
 File > Publish
