@@ -37,18 +37,23 @@ var saveFile = function(filename, content, type, callback) {
 var frameData = [];
 
 var useJpeg = false;
+var initalized = false;
+
+const DEV_MODE = false;
 
 ipcMain.on('async', (event, arg) => {
-  if(!!arg.width) {
+  if(!initalized) {
     mainWindow.setSize(arg.width, arg.height);
     mainWindow.webContents.setZoomFactor(arg.zoomFactor);
   // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
-    mainWindow.setMenu(null);
+    if(!DEV_MODE) mainWindow.setMenu(null);
     mainWindow.center();
 
+    if(!!arg.useJpeg) useJpeg = true;
+    initalized = true;
     mainWindow.show();
 
-    if(!!arg.useJpeg) useJpeg = true;
+    mainWindow.webContents.send('asynchronous-message', {initalized: true});
   }
   else
     frameData.push(arg);
@@ -75,7 +80,7 @@ const ASPECT = "landscape";
 
 app.on('ready', function() {
   // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
-  mainWindow = new BrowserWindow({show: false, frame: false, backgroundColor:'#000000'});
+  mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000'});
   mainWindow.on('closed', () => app.quit());
   mainWindow.loadURL(url.format({
       pathname: path.join(__dirname, 'index.html'),

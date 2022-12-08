@@ -42,7 +42,12 @@ function startCapture(stage, options) {
   var width = options && "width" in options ? options.width : 540;
   var height = options && "height" in options ? options.height : 960;
   var maxFrames = options && "maxFrames" in options ? options.maxFrames : 3600;
+  var initialized = false;
 
+  ipcRenderer.on('asynchronous-message', function handler(evt, message) {
+    initialized = true;
+    ipcRenderer.removeListener('asynchronous-message', handler);
+  });
   sendData({width, height, useJpeg, zoomFactor});
 
   var imageCounter = 0;
@@ -57,9 +62,8 @@ function startCapture(stage, options) {
   });
 
   var canvas = document.getElementById( 'canvas' );
-  var tickCounter = 0;
   createjs.Ticker.addEventListener('tick', (evt) => {
-    if(tickCounter > 0) { // skip first tick
+    if(initialized) {
       if(skipFrame == 0 || tickCounter % skipFrame == 0) {
 
         // for transparency without params
@@ -68,9 +72,8 @@ function startCapture(stage, options) {
         var data = {frame: ++imageCounter, url: url, x: stage.mouseX, y: stage.mouseY, clicking: mouseClicking};
         sendData(data);  
       }
-      if(imageCounter > maxFrames) evt.remove();  
+      if(imageCounter > maxFrames) evt.remove();        
     }
-    ++tickCounter;
   });
 }
 
