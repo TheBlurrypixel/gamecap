@@ -198,13 +198,20 @@ app.on('window-all-closed', () => {
 });
 
 app.on('ready', function() {
-  // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
-  mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000'});
-  mainWindow.on('closed', () => app.quit());
-  mainWindow.loadURL(url.format({
-      pathname: path.join(__dirname, 'index.html'),
+  var filepathArr = dialog.showOpenDialog({properties: ['openFile'], filters: [
+    { name: 'HTML', extensions: ['html', 'htm'] },
+    { name: 'All Files', extensions: ['*'] }
+  ]});
+
+  if(filepathArr && filepathArr[0]) {
+    // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
+    mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000'});
+    mainWindow.on('closed', () => app.quit());
+
+    mainWindow.loadURL(url.format({
+      pathname: filepathArr[0],
       protocol: 'file',
       slashes: true
     }));
-	}
-);
+  }
+});

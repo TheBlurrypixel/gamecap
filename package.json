@@ -4,15 +4,16 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "package-win": "electron-packager . \"gamified\" --platform=win32 --arch=x64 --app-bundle-id=\"gamified\" --app-version=\"1.0.0\" --build-version=\"1.0.0\" --asar --icon=\"./icon.ico\""
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^1.8.4"
+    "electron": "^1.8.4",
+    "electron-packager": "^17.1.1"
   },
   "dependencies": {
-    "electron-packager": "^11.2.0",
     "jquery": "^3.6.0"
   }
 }
