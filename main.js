@@ -190,7 +190,7 @@ app.on('window-all-closed', () => {
   
       // obj is all object props merged into single
       // this represents the project hierarchy
-      fs.writeFileSync("./mergedObjs.json", JSON.stringify(mergedSceneData, null, '\t'), 'utf-8');
+      fs.writeFileSync("./output/animation_data.json", JSON.stringify(mergedSceneData, null, '\t'), 'utf-8');
     }
   }
 

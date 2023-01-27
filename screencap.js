@@ -1,4 +1,4 @@
-(function (gc) {
+(function (sc) {
 if(!createjs) console.log( "createjs undefined");
 if(!Array.prototype.flat) {
     Object.defineProperty(Array.prototype, 'flat', {
@@ -77,6 +77,6 @@ function startCapture(stage, options) {
   });
 }
 
-gc.startCapture = startCapture;
-})(gamecap = gamecap||{});
-var gamecap;
+sc.startCapture = startCapture;
+})(screencap = screencap||{});
+var screencap;
