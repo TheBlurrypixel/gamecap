@@ -32,7 +32,7 @@ const BrowserWindow = electron.BrowserWindow;
 var mainWindow;
 
 
-var shouldQuit = !app.requestSingleInstanceLock()
+var shouldQuit = !app.requestSingleInstanceLock();
 app.on('second-instance', (event, argv, cwd) => {
   // Someone tried to run a second instance, we should focus our window.
   if (mainWindow) {
@@ -143,9 +143,6 @@ ipcMain.on('async', (event, arg) => {
 });
 
 app.on('window-all-closed', () => {
-    if(!!frameData) {
-  }
-
   var positionalArray = [];
   var frameDataArray = [];
   if(!!frameData) {
@@ -218,7 +215,6 @@ app.on('ready', function() {
       nodeIntegration: true,
       contextIsolation: false,
     }});
-    mainWindow.on('closed', () => app.quit());
 
     prompt({
       title: 'Get Rows',

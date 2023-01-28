@@ -1,26 +1,38 @@
 (function (sc) {
 if(!createjs) console.log( "createjs undefined");
-if(!Array.prototype.flat) {
-    Object.defineProperty(Array.prototype, 'flat', {
-        value: function(depth = 1, stack = []) {
-            for (let item of this) {
-                if (item instanceof Array && depth > 0) {
-                    item.flat(depth - 1, stack);
-                }
-                else {
-                    stack.push(item);
-                }
-            }
-            return stack;
-        }
-    });
+if (!Array.prototype.flat) {
+	Array.prototype.flat = function(depth) {
+
+		'use strict';
+
+		// If no depth is specified, default to 1
+		if (depth === undefined) {
+			depth = 1;
+		}
+
+		// Recursively reduce sub-arrays to the specified depth
+		var flatten = function (arr, depth) {
+
+			// If depth is 0, return the array as-is
+			if (depth < 1) {
+				return arr.slice();
+			}
+
+			// Otherwise, concatenate into the parent array
+			return arr.reduce(function (acc, val) {
+				return acc.concat(Array.isArray(val) ? flatten(val, depth - 1) : val);
+			}, []);
+
+		};
+
+		return flatten(this, depth);
+
+	};
 }
 
 if(typeof require === "undefined") return;
-var {ipcRenderer, remote} = require('electron');
-var main = remote.require("./main.js");
-const {dialog} = remote;
-const fs = remote.require('fs');
+const {ipcRenderer} = require('electron');
+const fs = require('fs');
 
 var saveFile = function(filename, content, type, callback) {
 	try {
