@@ -30,27 +30,9 @@ if (!Array.prototype.flat) {
 	};
 }
 
-// if(!Array.prototype.flat) {
-//     Object.defineProperty(Array.prototype, 'flat', {
-//         value: function(depth = 1, stack = []) {
-//             for (let item of this) {
-//                 if (item instanceof Array && depth > 0) {
-//                     item.flat(depth - 1, stack);
-//                 }
-//                 else {
-//                     stack.push(item);
-//                 }
-//             }
-//             return stack;
-//         }
-//     });
-// }
-
 if(typeof require === "undefined") return;
-var {ipcRenderer, remote} = require('electron');
-var main = remote.require("./main.js");
-const {dialog} = remote;
-const fs = remote.require('fs');
+const {ipcRenderer} = require('electron');
+const fs = require('fs');
 
 var saveFile = function(filename, content, type, callback) {
 	try {
@@ -102,7 +84,6 @@ function startCapture(stage, scene, options) {
             var obj = dataObj[i.name] = {index: childIndex, x: i.x, y: i.y, regX: i.regX, regY: i.regY, scaleX: i.scaleX, scaleY: i.scaleY, skewX: i.skewX, skewY: i.skewY, rotation: i.rotation, opacity: i.alpha*100, visible: i.visible};
             if(!!i.transformMatrix) obj.transformMatrix = i.transformMatrix.clone();
       
-//            if(i.children && i.children.length > 0) recurse(i, obj);
             if(i.children && i.children.length > 0 && !(('AE_NoRecurse' in i) && i.AE_NoRecurse)) recurse(i, obj);
           }
           else {

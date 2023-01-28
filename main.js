@@ -1,5 +1,4 @@
 const {dialog, ipcMain} = require('electron');
-//var fs = require('fs');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -7,16 +6,16 @@ const url = require('url');
 const electron = require('electron');
 const app = electron.app;
 
+const prompt = require('electron-prompt');
+
 //const path = require('path');
 
 var screenCapture = true;
 
-
-
 var frameData = [];
 
 var useJpeg = false;
-var initalized = false;
+var initialized = false;
 
 var width = 960
 var height = 960;
@@ -32,12 +31,21 @@ const BrowserWindow = electron.BrowserWindow;
 
 var mainWindow;
 
-var shouldQuit = app.makeSingleInstance(function(commandLine, workingDirectory) {
+
+var shouldQuit = !app.requestSingleInstanceLock()
+app.on('second-instance', (event, argv, cwd) => {
   // Someone tried to run a second instance, we should focus our window.
   if (mainWindow) {
     mainWindow.show();
   }
 });
+
+// var shouldQuit = app.makeSingleInstance(function(commandLine, workingDirectory) {
+//   // Someone tried to run a second instance, we should focus our window.
+//   if (mainWindow) {
+//     mainWindow.show();
+//   }
+// });
 
 if (shouldQuit) {
   app.quit();
@@ -111,7 +119,8 @@ function mergeDeepObjectProps(target, frame, srcNextCheck, srcPrevCheck, current
 }
 
 ipcMain.on('async', (event, arg) => {
-  if(!initalized) {
+  if(!initialized) {
+
     framerate = arg.framerate;
     width = arg.width;
     screenCapture = arg.screenCapture;
@@ -124,10 +133,10 @@ ipcMain.on('async', (event, arg) => {
 
     if(!!arg.useJpeg) useJpeg = true;
     framerate = arg.framerate;
-    initalized = true;
+    initialized = true;
     mainWindow.show();
 
-    mainWindow.webContents.send('asynchronous-message', {initalized: true});
+    mainWindow.webContents.send('asynchronous-message');
   }
   else
     frameData.push(arg);
@@ -198,20 +207,54 @@ app.on('window-all-closed', () => {
 });
 
 app.on('ready', function() {
-  var filepathArr = dialog.showOpenDialog({properties: ['openFile'], filters: [
+  var filepathArr = dialog.showOpenDialogSync({properties: ['openFile'], filters: [
     { name: 'HTML', extensions: ['html', 'htm'] },
     { name: 'All Files', extensions: ['*'] }
   ]});
 
   if(filepathArr && filepathArr[0]) {
     // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
-    mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000'});
+    mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000', webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    }});
     mainWindow.on('closed', () => app.quit());
 
-    mainWindow.loadURL(url.format({
-      pathname: filepathArr[0],
-      protocol: 'file',
-      slashes: true
-    }));
+    prompt({
+      title: 'Get Rows',
+      label: 'ROWS:',
+      value: '4',
+      height: 200,
+      inputAttrs: {
+          type: 'number'
+      },
+      type: 'input'
+    })
+    .then(rows => {
+      if(rows === null) return Promise.reject();
+      prompt({
+        title: 'Get Cols',
+        label: 'COLUMNS:',
+        value: '5',
+        height: 200,
+        inputAttrs: {
+            type: 'number'
+        },
+        type: 'input'
+      })
+      .then(cols => {
+        if(cols === null) return Promise.reject();
+        return {rows: parseInt(rows), cols: parseInt(cols)};
+      })
+      .then(dimsObj => {
+        mainWindow.loadURL(url.format({
+          pathname: filepathArr[0],
+          protocol: 'file',
+          slashes: true
+        }) + "?NUM_ROWS=" + dimsObj.rows + "&NUM_COLS=" + dimsObj.cols);
+      })
+      .catch(console.error);  
+    })
+    .catch(console.error);
   }
 });

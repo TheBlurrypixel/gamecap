@@ -10,8 +10,8 @@ npm i
 
 Copy FLA to folder <br/>
 Then open up FLA in Animate <br/>
-add gamecap.js or screencap.js to Include Scripts <br/>
-add the startCapture code to the first frame script
+add gamecap.js to Include Scripts <br/>
+add the gamecap.startCapture code to the first frame script
 
 For example:
 ```
@@ -32,13 +32,3 @@ npm start
 Interact with the board!
 
 When you are done simply close the window. Note, it is creating an image sequence 30 fps into the output folder. Therefore, I have put in a 60sec timeout to keep it from overflowing.
-
-Alernatively, use electron-packager to make exe
-```
-npm run package-win
-```
-
-Then use Enigma Virtual Box to bundle it
-
-If gamecap.js, you will us recreateKeys in After Effects to recreate the animation in After Effects
-Run the script in AE and choose the animation_data.json file
