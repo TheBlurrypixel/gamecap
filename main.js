@@ -7,6 +7,7 @@ const electron = require('electron');
 const app = electron.app;
 
 const prompt = require('electron-prompt');
+const { contextIsolated } = require('process');
 
 //const path = require('path');
 
@@ -26,31 +27,28 @@ const DEV_MODE = true;
 const ASPECT = "landscape";
 
 
-
 const BrowserWindow = electron.BrowserWindow;
 
 var mainWindow;
 
-
-var shouldQuit = !app.requestSingleInstanceLock();
-app.on('second-instance', (event, argv, cwd) => {
-  // Someone tried to run a second instance, we should focus our window.
-  if (mainWindow) {
-    mainWindow.show();
-  }
-});
-
-// var shouldQuit = app.makeSingleInstance(function(commandLine, workingDirectory) {
-//   // Someone tried to run a second instance, we should focus our window.
-//   if (mainWindow) {
-//     mainWindow.show();
-//   }
-// });
-
-if (shouldQuit) {
+var gotTheLock = app.requestSingleInstanceLock();
+if(!gotTheLock) {
   app.quit();
   return;
 }
+
+app.on('second-instance', (event, argv, cwd) => {
+  // Someone tried to run a second instance, we should focus our window.
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+});
+
+// if (shouldQuit) {
+//   app.quit();
+//   return;
+// }
 
 if(!fs.existsSync("output\\"))
 	fs.mkdirSync("output\\");
@@ -76,12 +74,37 @@ function mergeDeepObjectProps(target, frame, srcNextCheck, srcPrevCheck, current
 			var key = ky;
 			if (isObject(source[key])) {
 				var src = source[key];
-				if (!target[key]) {
+//        if(key === 'dashContent' && src.shapes) console.log("target[key] exists: " + (key in target));
+
+        // if(key === 'dashContent') {
+        //   Object.keys(src).forEach(i => {
+        //     if(i == "shapes") {
+        //       Object.keys(src[i]).forEach(k => {
+        //         console.log("dashContent: " + k);
+        //       })
+        //     }
+        //   });
+        // }
+				if (!(key in target)) {
+//          console.log(key);
 					var propObj = {};
 					propObj[key] = {index: src.index, startFrames: [], endFrames: [], position: [{frame: frame, value: [src.x, src.y]}], anchorPoint: [{frame: frame, value: [src.regX, src.regY]}], scale: [{frame: frame, value: [src.scaleX, src.scaleY]}], rotation: [{frame: frame, value: src.rotation}], opacity: [{frame: frame, value: src.visible ? src.opacity : 0}]};
-					if(!!src.bitmaps) propObj[key].bitmaps = src.bitmaps.slice();
+					if(!!src.bitmaps) {
+            propObj[key].bitmaps = src.bitmaps.slice();
+          }
+
+					if(!!src.shapes) {
+//            if(key === 'dashContent') console.log("dashContent src.shapes: " + src.shapes.length);
+//            console.log("shapes found in key: " + key);
+            propObj[key].shapes = Array(src.shapes.length).fill(null);
+            var shapesArr = propObj[key].shapes; 
+            shapesArr.forEach((i, index) => {
+              var parsedShape = src.shapes[index];
+              shapesArr[index] = [{frame: frame, value: {instructions: parsedShape.shapeInstructions, x: parsedShape.x, y: parsedShape.y}}]
+            });
+          }
 					Object.assign(target, propObj);
-				}
+				 }
 				else { // target[key] already exists
 					target[key] = Object.assign({}, target[key])
 
@@ -100,6 +123,31 @@ function mergeDeepObjectProps(target, frame, srcNextCheck, srcPrevCheck, current
 					var opacity = target[key].opacity[target[key].opacity.length-1];
 					var srcOpacity = src.visible ? src.opacity : 0;
 					if(opacity.value != srcOpacity) target[key].opacity.push({frame: frame, value: src.visible ? src.opacity : 0});
+
+          if(!!src.shapes) {
+            if(!!target[key].shapes) {
+              for(var i=0; i<src.shapes.length; i++) {
+                var shapeKey = target[key].shapes[i];
+                if(shapeKey && shapeKey.length > 0) {
+                  var shape = shapeKey[shapeKey.length-1];
+                  var parsedShape = src.shapes[i];
+                  if(shape.value.instructions != parsedShape.shapeInstructions ||
+                  shape.value.x != parsedShape.x ||
+                  shape.value.y != parsedShape.y) {
+                    shapeKey.push({frame: frame, value: {instructions: parsedShape.shapeInstructions, x: parsedShape.x, y: parsedShape.y}});  
+                  }
+                }
+              }
+            }
+            else {
+              target[key].shapes = Array(src.shapes.length).fill(null);
+              var shapesArr = target[key].shapes; 
+              shapesArr.forEach((i, index) => {
+                var parsedShape = src.shapes[index];
+                shapesArr[index] = [{frame: frame, value: {instructions: parsedShape.shapeInstructions, x: parsedShape.x, y: parsedShape.y}}]
+              });
+            }
+          }
 				}
 
 				if(!srcNextCheck || !(key in srcNextCheck)) {
@@ -118,9 +166,9 @@ function mergeDeepObjectProps(target, frame, srcNextCheck, srcPrevCheck, current
 	return mergeDeepObjectProps(target, frame, srcNextCheck, srcPrevCheck, currentIndex, ...sources);
 }
 
-ipcMain.on('async', (event, arg) => {
+ipcMain.on('async', (event, inArg) => {
   if(!initialized) {
-
+    var arg = inArg;
     framerate = arg.framerate;
     width = arg.width;
     screenCapture = arg.screenCapture;
@@ -139,8 +187,9 @@ ipcMain.on('async', (event, arg) => {
     mainWindow.webContents.send('asynchronous-message');
   }
   else
-    frameData.push(arg);
+    frameData.push(inArg);
 });
+
 
 app.on('window-all-closed', () => {
   var positionalArray = [];
@@ -148,7 +197,8 @@ app.on('window-all-closed', () => {
   if(!!frameData) {
     if(screenCapture) {
       if(!!frameData) {
-        frameData.forEach(data => {
+        frameData.forEach(inData => {
+          var data = inData;
           const {frame, url} = data;
           var base64data = url.split(';base64,')[1];
           saveFile("output\\image_"+frame+(useJpeg?".jpg":".png"), base64data, 'base64', (err) => {
@@ -160,7 +210,9 @@ app.on('window-all-closed', () => {
       fs.writeFileSync("output\\positions.json", JSON.stringify(positionalArray), 'utf-8');
     }
     else {
-      frameData.forEach(data => {
+      frameData.forEach(inData => {
+//        console.log(inData);
+        var data = inData;
         // const {frame, url} = data;
         // var base64data = url.split(';base64,')[1];
         // saveFile("output\\image_"+frame+(useJpeg?".jpg":".png"), base64data, 'base64', (err) => {
@@ -203,6 +255,7 @@ app.on('window-all-closed', () => {
   app.quit()
 });
 
+
 app.on('ready', function() {
   var filepathArr = dialog.showOpenDialogSync({properties: ['openFile'], filters: [
     { name: 'HTML', extensions: ['html', 'htm'] },
@@ -210,46 +263,48 @@ app.on('ready', function() {
   ]});
 
   if(filepathArr && filepathArr[0]) {
+    var fileText = fs.readFileSync(filepathArr[0], 'utf8');
+    var re = /(?:<!--BEGINPROMPT--)(.*)(?:--ENDPROMPT-->)/gm;
+    var promptStrings = Array.from(fileText.matchAll(re), (m) => m[1]);
+
     // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
-    mainWindow = new BrowserWindow({show: false, frame: DEV_MODE, backgroundColor:'#000000', webPreferences: {
+    mainWindow = new BrowserWindow({show: true, frame: DEV_MODE, backgroundColor:'#000000', webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     }});
 
-    prompt({
-      title: 'Get Rows',
-      label: 'ROWS:',
-      value: '4',
-      height: 200,
-      inputAttrs: {
-          type: 'number'
-      },
-      type: 'input'
+    var prom = Promise.resolve([]);
+    promptStrings.forEach(promptStr => {
+      var promptParams = promptStr.split(',');
+      if(promptParams.length > 1) {
+        var paramStr = promptParams.shift().trim();
+        var labelStr = promptParams.join();
+
+        prom = prom.then(valueArr => {
+          return new Promise(res => {
+            prompt({title: labelStr, label: labelStr, height: 200, type: 'input'})
+            .then(val => {
+              valueArr.push({param: paramStr, answer: val});
+              res(valueArr);
+            })
+          });
+        });  
+      }
     })
-    .then(rows => {
-      if(rows === null) return Promise.reject();
-      prompt({
-        title: 'Get Cols',
-        label: 'COLUMNS:',
-        value: '5',
-        height: 200,
-        inputAttrs: {
-            type: 'number'
-        },
-        type: 'input'
-      })
-      .then(cols => {
-        if(cols === null) return Promise.reject();
-        return {rows: parseInt(rows), cols: parseInt(cols)};
-      })
-      .then(dimsObj => {
-        mainWindow.loadURL(url.format({
-          pathname: filepathArr[0],
-          protocol: 'file',
-          slashes: true
-        }) + "?NUM_ROWS=" + dimsObj.rows + "&NUM_COLS=" + dimsObj.cols);
-      })
-      .catch(console.error);  
+
+    prom.then(valuesArr => {
+      var suffix = valuesArr.reduce((acc, cur, ind) => {
+        return acc + (ind > 0 ? "&" : "?") + cur.param + "=" + cur.answer;
+      }, "");
+
+      var urlToLoad = url.format({
+        pathname: filepathArr[0],
+        protocol: 'file',
+        slashes: true
+      }) + suffix;
+
+//      + "?NUM_ROWS=" + dimsObj.rows + "&NUM_COLS=" + dimsObj.cols
+      mainWindow.loadURL(urlToLoad);
     })
     .catch(console.error);
   }

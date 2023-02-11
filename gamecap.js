@@ -83,7 +83,7 @@ function startCapture(stage, scene, options) {
             var childIndex = clip.children.length - clip.getChildIndex(i); // we reverse the index and start at 1 as this is what After Effects uses
             var obj = dataObj[i.name] = {index: childIndex, x: i.x, y: i.y, regX: i.regX, regY: i.regY, scaleX: i.scaleX, scaleY: i.scaleY, skewX: i.skewX, skewY: i.skewY, rotation: i.rotation, opacity: i.alpha*100, visible: i.visible};
             if(!!i.transformMatrix) obj.transformMatrix = i.transformMatrix.clone();
-      
+
             if(i.children && i.children.length > 0 && !(('AE_NoRecurse' in i) && i.AE_NoRecurse)) recurse(i, obj);
           }
           else {
@@ -94,13 +94,27 @@ function startCapture(stage, scene, options) {
                 dataObj.bitmaps.push(srcMatches[0]);
               }
             }
+            else if(i instanceof createjs.Shape && i.parent.shapeHolder) {
+              var childIndex = clip.children.length - clip.getChildIndex(i); // we reverse the index and start at 1 as this is what After Effects uses
+              var obj = {index: childIndex, x: i.x, y: i.y, regX: i.regX, regY: i.regY, scaleX: i.scaleX, scaleY: i.scaleY, skewX: i.skewX, skewY: i.skewY, rotation: i.rotation, opacity: i.alpha*100, visible: i.visible};
+              if(!!i.transformMatrix) obj.transformMatrix = i.transformMatrix.clone();
+  //              this.children[0].graphics.instructions[0] instanceof createjs.Graphics.BeginPath
+              var instructions = i.graphics.instructions.map(inst => {
+                if(inst instanceof createjs.Graphics.BeginPath) return {beginpath: true};
+                else if(inst instanceof createjs.Graphics.ClosePath) return {closepath: true};
+                return inst;
+              })
+              obj.shapeInstructions = JSON.stringify(instructions);;
+              dataObj.shapes = dataObj.shapes || [];
+//              dataObj.shapes.push(JSON.stringify(obj)); // just trying to avoid creating an array of objects seems to caused problems when deserealizing
+              dataObj.shapes.push(obj); // just trying to avoid creating an array of objects seems to caused problems when deserealizing
+            }
           }
         });
       }
       recurse(stage.children[0], dataObj);
 
       var mousePos = scene.globalToLocal(stage.mouseX, stage.mouseY);
-
       var data = {frame: imageCounter++, dataObj: dataObj, x: mousePos.x, y: mousePos.y, clicking: mouseClicking};
       sendData(data);
       if(imageCounter > maxFrames) evt.remove();

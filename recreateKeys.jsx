@@ -101,6 +101,162 @@ if (!Array.prototype.lastIndexOf) {
 		return (item && typeof item === 'object' && !Array.isArray(item));
 	}
 
+
+	function convertQP2CP(qp0, qp1, qp2) {
+		var cp1 = [0,0];
+		var cp2 = [0,0];
+		cp1[0] = qp0[0] + 2/3 *(qp1[0] - qp0[0]);
+		cp1[1] = qp0[1] + 2/3 *(qp1[1] - qp0[1]);
+		cp2[0] = qp2[0] + 2/3 *(qp1[0] - qp2[0]);
+		cp2[1] = qp2[1] + 2/3 *(qp1[1] - qp2[1]);
+
+		return [cp1, cp2];
+	}
+
+	function addShapeKey(timeToSetKey, shapeGroup, sgr, instructions, setColor) {
+		var sGroup = shapeGroup;
+		var contents = sGroup.property("Contents");
+		var grp = contents.property("Path 1");
+		var extraGrps = [];
+
+		setColor = !!setColor;
+		var myShape = new Shape();
+		var vertsArr = [];
+		var outTangsArr = [];
+		var inTangsArr = [];
+		
+		var isStroke = false;
+		var strokeWidth = 0;
+		var colorStr = "#FFFFFF";
+		
+		var closePathCalled = false;
+		var beginPathCalled = false;
+		
+		var curGrpObj = null;
+		var curGrp = grp;
+		var curShape = myShape;
+		var curVertsArr = vertsArr;
+		var curOutTangsArr = outTangsArr;
+		var curInTangsArr = inTangsArr;
+		
+		for(var i=0; i<instructions.length; i++) {
+			var obj = instructions[i];
+			var nextObj = i+1<instructions.length ? instructions[i+1] : instructions[0];
+			if("beginpath" in obj) {
+				beginPathCalled = true;
+			}
+			else if("closepath" in obj) {
+				closePathCalled = true;
+				if(closePathCalled) {
+					curVertsArr = [];
+					curOutTangsArr = [];
+					curInTangsArr = [];
+					extraGrps.push(curGrpObj = {vertsArr: curVertsArr, outTangsArr: curOutTangsArr, inTangsArr: curInTangsArr});
+				}
+			}
+			else if("x" in obj && "y" in obj) {
+				curVertsArr.push([obj.x, obj.y]);
+				if("cpx" in obj && "cpy" in obj) {
+					var x = (obj.cpx - obj.x) * 2/3;
+					var y = (obj.cpy - obj.y) * 2/3;
+					curInTangsArr.push([x, y]);
+				}
+				else curInTangsArr.push([0, 0]);
+				
+				if(nextObj && "cpx" in nextObj && "cpy" in nextObj) {
+					var x = (nextObj.cpx - obj.x) * 2/3; 
+					var y = (nextObj.cpy - obj.y) * 2/3;
+					curOutTangsArr.push([x, y]);
+				}
+				else curOutTangsArr.push([0, 0]);
+			}
+			else if(setColor) {
+				if("width" in obj) {
+					isStroke = true;
+					strokeWidth = obj.width;
+				}
+				else if("style" in obj) {
+					colorStr = obj.style;
+				}
+			}			
+		}
+	
+		// primary shape
+		myShape.vertices = vertsArr;
+		myShape.inTangents = inTangsArr;
+		myShape.outTangents = outTangsArr;
+		myShape.closed = true;
+		grp = contents.property("Path 1");
+		var pathProp = grp("path");
+		pathProp.setValueAtTime(timeToSetKey, myShape);
+		pathProp.setInterpolationTypeAtKey(pathProp.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
+		
+		// extra shapes
+		for(var index = 0; index < extraGrps.length; index++) {
+			if(extraGrps[index].vertsArr.length > 0) {
+				var tempGrp = shapeGroup.property("Contents").property("Path " + (index+2));
+				var newGrp = tempGrp || shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Group");
+				var newShape = new Shape();
+				
+				newShape.vertices = extraGrps[index].vertsArr;
+				newShape.inTangents = extraGrps[index].inTangsArr;
+				newShape.outTangents = extraGrps[index].outTangsArr;
+				newShape.closed = true;
+				var pathProp = newGrp("path");
+				pathProp.setValueAtTime(timeToSetKey, newShape);
+				pathProp.setInterpolationTypeAtKey(pathProp.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
+			}			
+		}
+		
+		if(setColor) {
+			// convert color
+			var isRGBAColor = /^rgba/.test(colorStr);
+			var color = [1,1,1];
+			var opacity = 100;
+			if(isRGBAColor) {
+				var colorMatches = colorStr.match(/(?:\()(.*)(?:\))/)[1].split(',');
+				color = [];
+				for(var i = 0; i<colorMatches.length-1; i++) {
+					var c = Number(colorMatches[i]);
+					if(i < colorMatches.length-1) c= c/255;
+					color[i] = c;
+				}
+				opacity = colorMatches[colorMatches.length-1] * 100;
+			}
+			else {
+				var c= colorStr.substring(1).split('');
+				if(c.length== 3) {
+					c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+				}
+				c = '0x'+c.join('');
+				color = [((c>>16)&255)/255, ((c>>8)&255)/255, (c&255)/255, 1];
+			}
+			
+			if(!isStroke) {
+ 				var fill = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Fill");
+				fill("color").setValue(color);
+				fill("opacity").setValue(opacity);
+			}
+			else {
+				var stroke = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Stroke");	
+				stroke("color").setValue(color);
+				stroke("opacity").setValue(opacity);
+				stroke("strokeWidth").setValue(strokeWidth);
+			}		
+		}
+	
+		return grp;
+	}
+
+	function getMagnitude(x,y) {
+		return Math.sqrt(x*x + y*y);
+	}
+
+	function normalize(x,y) {
+		var magnitude = getMagnitude(x,y);
+		return [x/magnitude, y/magnitude];
+	}
+
 	function main() {
 		app.beginUndoGroup("recreateKeys");
 		
@@ -185,10 +341,14 @@ if (!Array.prototype.lastIndexOf) {
 								compAddedLayer.rotation.setValueAtTime(timeToSetKey, valueObj.value);
 								compAddedLayer.rotation.setInterpolationTypeAtKey(compAddedLayer.rotation.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
 							}
+						
+							var earliestFrame = null;
 
  							for(var i = 0; i < objProp.opacity.length; i++) {
 								var valueObj = objProp.opacity[i];
 								var timeToSetKey = valueObj.frame/FPS;
+								if(earliestFrame === null || valueObj.frame < earliestFrame) earliestFrame = valueObj.frame;
+								
 								compAddedLayer.opacity.setValueAtTime(timeToSetKey, valueObj.value);
 								compAddedLayer.opacity.setInterpolationTypeAtKey(compAddedLayer.opacity.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
 							}
@@ -217,8 +377,11 @@ if (!Array.prototype.lastIndexOf) {
 								startEndValues.push(curFrame);
 								
 								var timeToSetKey = (curType == 'end' ? curFrame +1 : curFrame)/FPS;
-								compAddedLayer.opacity.setValueAtTime(timeToSetKey, curType == 'start' ? 100 : 0);
-								compAddedLayer.opacity.setInterpolationTypeAtKey(compAddedLayer.opacity.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
+
+								if(curType != 'start' || curFrame > earliestFrame) {
+									compAddedLayer.opacity.setValueAtTime(timeToSetKey, curType == 'start' ? 100 : 0);
+									compAddedLayer.opacity.setInterpolationTypeAtKey(compAddedLayer.opacity.nearestKeyIndex(timeToSetKey), KeyframeInterpolationType.HOLD);
+								}
 							}
 							
 							// get the first start frame
@@ -227,7 +390,7 @@ if (!Array.prototype.lastIndexOf) {
 							
 							compAddedLayer.inPoint = startFrame/FPS;
 							compAddedLayer.outPoint = endFrame/FPS;
-
+							
 							if(!!objProp.bitmaps && objProp.bitmaps.length > 0) {
 								for(var i = 0; i < objProp.bitmaps.length; i++) {
 									var footage = proj.importFile(new ImportOptions(File(File($.fileName).path  + "/images/" + objProp.bitmaps[i])));
@@ -235,6 +398,31 @@ if (!Array.prototype.lastIndexOf) {
 									var footageLayer = compToAdd.layers.add(footage);
 									footageLayer.anchorPoint.setValue([0,0,0]);
 									footageLayer.position.setValue([0,0,0]);
+								}
+							}
+						
+							if(objProp.shapes && objProp.shapes.length > 0) {
+								for(var i = objProp.shapes.length-1; i>=0; i--) {
+									var shapeKeys = objProp.shapes[i];
+									var shapeLayer = compToAdd.layers.addShape();
+									var shapeGroup = shapeLayer.property("Contents").addProperty("ADBE Vector Group");
+									shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Group");
+									
+									for(var k = 0; k < shapeKeys.length; k++) {
+										var valueObj = shapeKeys[k];
+										var timeToSetKey = valueObj.frame/FPS;
+//										compAddedLayer.anchorPoint.setValueAtTime(timeToSetKey, [valueObj.value[0], valueObj.value[1], 0]);								
+
+										var instructions = JSON.parse(valueObj.value.instructions);
+										try {
+											addShapeKey(timeToSetKey, shapeGroup, null, instructions, (k==0));
+											shapeLayer.anchorPoint.setValue([0,0,0]);
+											shapeLayer.position.setValue([valueObj.value.x, valueObj.value.y, 0]);
+										}
+										catch(err) {
+											$.writeln(err);
+										}
+									}									
 								}
 							}
 
