@@ -14,6 +14,7 @@ const { contextIsolated } = require('process');
 var screenCapture = true;
 
 var frameData = [];
+var outputDir = null;
 
 var useJpeg = false;
 var initialized = false;
@@ -50,8 +51,8 @@ app.on('second-instance', (event, argv, cwd) => {
 //   return;
 // }
 
-if(!fs.existsSync("output\\"))
-	fs.mkdirSync("output\\");
+// if(!fs.existsSync("output\\"))
+// 	fs.mkdirSync("output\\");
 
 var saveFile = function(filename, content, type, callback) {
   try {
@@ -190,7 +191,6 @@ ipcMain.on('async', (event, inArg) => {
     frameData.push(inArg);
 });
 
-
 app.on('window-all-closed', () => {
   var positionalArray = [];
   var frameDataArray = [];
@@ -201,13 +201,13 @@ app.on('window-all-closed', () => {
           var data = inData;
           const {frame, url} = data;
           var base64data = url.split(';base64,')[1];
-          saveFile("output\\image_"+frame+(useJpeg?".jpg":".png"), base64data, 'base64', (err) => {
+          saveFile(outputDir + "\\image_"+frame+(useJpeg?".jpg":".png"), base64data, 'base64', (err) => {
             if(err) console.log("Err: " + err);
           });
           positionalArray.push({frame: data.frame, x: data.x, y: data.y, clicking: data.clicking});
         });
       }
-      fs.writeFileSync("output\\positions.json", JSON.stringify(positionalArray), 'utf-8');
+      fs.writeFileSync(outputDir + "\\positions.json", JSON.stringify(positionalArray), 'utf-8');
     }
     else {
       frameData.forEach(inData => {
@@ -248,7 +248,7 @@ app.on('window-all-closed', () => {
   
       // obj is all object props merged into single
       // this represents the project hierarchy
-      fs.writeFileSync("./output/animation_data.json", JSON.stringify(mergedSceneData, null, '\t'), 'utf-8');
+      fs.writeFileSync(outputDir + "\\animation_data.json", JSON.stringify(mergedSceneData, null, '\t'), 'utf-8');
     }
   }
 
@@ -263,6 +263,9 @@ app.on('ready', function() {
   ]});
 
   if(filepathArr && filepathArr[0]) {
+    outputDir = path.dirname(filepathArr[0]) + "\\output";
+    if(!fs.existsSync(outputDir + "\\")) fs.mkdirSync(outputDir);
+
     var fileText = fs.readFileSync(filepathArr[0], 'utf8');
     var re = /(?:<!--BEGINPROMPT--)(.*)(?:--ENDPROMPT-->)/gm;
     var promptStrings = Array.from(fileText.matchAll(re), (m) => m[1]);
