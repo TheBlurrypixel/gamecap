@@ -16,7 +16,7 @@ add the gamecap.startCapture code to the first frame script
 For example:
 ```
 // function startCapture(stage[, {useJpeg = false, zoomFactor = 1, skipFrame = 0, width = 540, height = 960, maxFrames = 3600}])
-if(gamecap && gamecap.startCapture) gamecap.startCapture(stage, {zoomFactor: 0.5});
+if(gamecap && gamecap.startCapture) gamecap.startCapture(stage, this, {zoomFactor: 0.5});
 ```
 
 File > Publish
