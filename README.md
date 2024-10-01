@@ -37,3 +37,44 @@ npm start
 Interact with the board!
 
 When you are done simply close the window. Note, it is creating an image sequence 30 fps into the output folder. Therefore, I have put in a 60sec timeout to keep it from overflowing.
+
+NOTE: Adobe Animate with components and jQuery not working in electron app
+problem is with this code in jQuery
+
+```
+if ( typeof module === "object" && typeof module.exports === "object" ) {
+  // set jQuery in `module`
+} else {
+  // set jQuery in `window`
+}
+```
+
+Solution is to add the following code after the jQuery code
+
+```
+window.$ = window.jQuery = module.exports;
+```
+
+or change 
+
+```
+if ( typeof module === "object" && typeof module.exports === "object" ) {
+```
+to
+```
+if (typeof module === "object" && module.exports) {
+```
+
+this is because in electorn typeof module.exports returns "function" and NOT "object"!
+
+If you are using naru you can use the following regex and substitution callback
+
+regex
+```
+/(\/\*\!\sjQuery.*$)([\r\n]*.*)/gm
+```
+
+substitution callback
+```
+(match) => { return match + "\nif(typeof module == \"object\" && module.exports) window.$ = window.jQuery = module.exports;"; }
+```
