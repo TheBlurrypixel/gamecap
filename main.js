@@ -56,7 +56,9 @@ app.on('second-instance', (event, argv, cwd) => {
 
 var saveFile = function(filename, content, type, callback) {
   try {
-    fs.writeFile(filename, content, type, callback);
+    // async writeFile seems to cause corruption!
+//    fs.writeFile(filename, content, type, callback);
+    fs.writeFileSync(filename, content, type);
   }
   catch(e) { alert('Failed to save the file !'); }
 }
@@ -190,6 +192,32 @@ ipcMain.on('async', (event, inArg) => {
   else
     frameData.push(inArg);
 });
+
+/*
+ipcMain.on('sync', (event, inArg) => {
+  if(!initialized) {
+    var arg = inArg;
+    framerate = arg.framerate;
+    width = arg.width;
+    screenCapture = arg.screenCapture;
+
+    mainWindow.setSize(arg.width, arg.height);
+    mainWindow.webContents.setZoomFactor(arg.zoomFactor);
+  // frame: false and mainWindow.setMenu(null) above to make sure size matches dims
+    if(!DEV_MODE) mainWindow.setMenu(null);
+    mainWindow.center();
+
+    if(!!arg.useJpeg) useJpeg = true;
+    framerate = arg.framerate;
+    initialized = true;
+    mainWindow.show();
+
+    mainWindow.webContents.send('asynchronous-message');
+  }
+  else
+    frameData.push(inArg);
+});
+*/
 
 app.on('window-all-closed', () => {
   var positionalArray = [];

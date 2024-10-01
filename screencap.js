@@ -34,14 +34,15 @@ if(typeof require === "undefined") return;
 const {ipcRenderer} = require('electron');
 const fs = require('fs');
 
-var saveFile = function(filename, content, type, callback) {
-	try {
-		fs.writeFile(filename, content, type, callback);
-	}
-	catch(e) { alert('Failed to save the file !'); }
-}
+// var saveFile = function(filename, content, type, callback) {
+// 	try {
+// 		fs.writeFile(filename, content, type, callback);
+// 	}
+// 	catch(e) { alert('Failed to save the file !'); }
+// }
 
 var sendData = function(data) {
+//	ipcRenderer.sendSync('sync', data);
 	ipcRenderer.send('async', data);
 }
 
