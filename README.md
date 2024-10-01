@@ -13,10 +13,15 @@ Then open up FLA in Animate <br/>
 add gamecap.js to Include Scripts <br/>
 add the gamecap.startCapture code to the first frame script
 
+for full screen capture use screencap.js instead<br/>
+
 For example:
 ```
 // function startCapture(stage[, {useJpeg = false, zoomFactor = 1, skipFrame = 0, width = 540, height = 960, maxFrames = 3600}])
 if(gamecap && gamecap.startCapture) gamecap.startCapture(stage, this, {zoomFactor: 0.5});
+
+// for screen capture instead
+if(screencap && screencap.startCapture) screencap.startCapture(stage, {zoomFactor: 0.5});
 ```
 
 File > Publish
